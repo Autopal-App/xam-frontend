@@ -117,7 +117,9 @@ export default function AccountTypePage() {
           {/* Continue Button - Disabled until both fields are filled */}
           <Button
             disabled={!isContinueEnabled}
-            className={`mt-4 w-full flex flex-nowrap items-center justify-center ${!isContinueEnabled ? "opacity-60 cursor-not-allowed" : ""}`}
+            className={`mt-4 w-full flex flex-nowrap items-center justify-center ${
+              !isContinueEnabled ? "opacity-60 cursor-not-allowed" : ""
+            }`}
             asChild={isContinueEnabled}
           >
             {isContinueEnabled ? (

@@ -1,14 +1,14 @@
+import { useGoogle } from "@/src/hooks/use_auth_hook";
 import Button from "../ui/Button";
 
 export default function GoogleButton() {
+  const { mutate } = useGoogle();
+  const handleGoogleLogin = () => {
+    console.log("mutating");
+    mutate();
+  };
   return (
-    <Button
-      variant="google"
-      onClick={() => {
-        /*handleGoogleLogin*/
-      }}
-      className="mb-6"
-    >
+    <Button variant="google" onClick={handleGoogleLogin} className="mb-6">
       <svg className="w-5 h-5" viewBox="0 0 24 24">
         <path
           fill="#4285F4"

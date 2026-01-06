@@ -14,6 +14,7 @@ import { parse } from "set-cookie-parser";
 import { createSession } from "../utils/session";
 import { env } from "@/src/lib/config";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 type ActionResponse = {
   success: boolean;
@@ -23,7 +24,7 @@ type ActionResponse = {
   errors?: Record<string, string[]>;
 };
 export async function registerAction(
-  data: RegisterInput,
+  data: RegisterInput
 ): Promise<ActionResponse> {
   // 1. Input Validation (Zod) - Stop bad data early
   const validation = RegisterSchema.safeParse(data);
@@ -46,7 +47,7 @@ export async function registerAction(
     const refreshToken = refreshTokenCookie?.value;
     const access_token = response.data?.data?.accessToken;
     console.log(
-      `access_token:${access_token} and refreshToken:${refreshToken}`,
+      `access_token:${access_token} and refreshToken:${refreshToken}`
     );
 
     if (access_token && refreshToken) {
@@ -58,7 +59,7 @@ export async function registerAction(
     // 4. Axios Error Handling
     if (axios.isAxiosError(error)) {
       const status = error.response?.status;
-      const backendMessage = error.response?.error || error.message;
+      const backendMessage = error.response?.data?.error || error.message;
 
       console.error(`Backend Error (${status}):`, backendMessage);
 
@@ -80,7 +81,7 @@ export async function registerAction(
 }
 
 export async function sendEmailAction(
-  data: sendEmailInput,
+  data: sendEmailInput
 ): Promise<ActionResponse> {
   const validation = sendEmailSchema.safeParse(data);
   if (!validation.success) {
@@ -100,19 +101,32 @@ export async function sendEmailAction(
 }
 
 export async function verifyEmailAction(
-  token: string,
+  token: string
 ): Promise<ActionResponse> {
   try {
     const resp = await axios.put(
-      `${env.BACKEND_API_URL}/auth/activate?token=${token}`,
+      `${env.BACKEND_API_URL}/auth/activate?token=${token}`
     );
     return { success: true, data: resp.data };
   } catch (err) {
-    console.error("Error verifying email:", err);
-    console.log("resp", err.resp);
-    return { success: false, message: "Failed to verify email" };
+    if (axios.isAxiosError(err)) {
+      const status = err.response?.status;
+      const backendMessage = err.response?.data?.error || err.message;
+
+      console.error(`Backend Error (${status}):`, backendMessage);
+
+      // Handle "Email already taken" specifically if your backend sends 409
+      if (status === 404) {
+        return {
+          success: false,
+          message: "Invalid or expired token.",
+        };
+      }
+      return { success: false, message: "Failed to verify email" };
+    }
+    /* console.error("Error verifying email:", err);
+    console.log("resp", err.resp);*/
   }
-  return;
 }
 
 export async function loginAction(data: LoginInput): Promise<ActionResponse> {
@@ -130,13 +144,30 @@ export async function loginAction(data: LoginInput): Promise<ActionResponse> {
 
     const access_token = resp.data?.data?.accessToken;
     console.log(
-      `access_token:${access_token} and refreshToken:${refreshToken}`,
+      `access_token:${access_token} and refreshToken:${refreshToken}`
     );
+    //NOt issusing the access token here because the account as not be setup and the access token need the accoutId in the payload
+    //Also we dont want it redirecting to the dashboard wen ther is no accout data to load
+    if (refreshToken) {
+      await createSession("", refreshToken);
+    }
+    console.log("resp", resp.data);
 
+    //This is jus to know if user as set up an account or not
+    // Todo: use account id instead of name make sure the backend sends account id
+    const name = resp.data.data?.user?.name;
+    const role = resp.data.data?.user?.role;
+    if (name === "" || role === "") {
+      console.log("Account not set up");
+      return { success: true, data: { redirect_url: "/onboarding/account" } };
+    }
+
+    //issue access token and refresh token cuz now we are sure the account is set up
     if (access_token && refreshToken) {
       await createSession(access_token, refreshToken);
     }
-    console.log("resp", resp.data);
+    //TODO adjuse this cuz to resp.data.data.user send only the user opject doin tg this
+    // is wrong cuz the accessToken is the resp.data and it would expose it to the frontend
     return { success: true, data: resp.data };
   } catch (err) {
     // 4. Axios Error Handling
@@ -149,7 +180,7 @@ export async function loginAction(data: LoginInput): Promise<ActionResponse> {
       console.log(err.response?.data?.success);
 
       // Handle "Email already taken" specifically if your backend sends 409
-      if (status === 409) {
+      if (status === 403) {
         return { success: false, message: "Invalid credentials" };
       }
       if (err.response?.data?.success) {
@@ -166,5 +197,33 @@ export async function loginAction(data: LoginInput): Promise<ActionResponse> {
         message: backendMessage || "Login failed",
       };
     }
+  }
+}
+
+export async function googleAction(): Promise<ActionResponse> {
+  let googleUrl = "";
+  try {
+    const resp = await axios.get(`${env.BACKEND_API_URL}/auth/google`, {
+      maxRedirects: 0, // so as not follow the redirect automatically
+      validateStatus: (status) => status >= 200 && status < 400, // Accept 302 as success
+    });
+
+    // if backend tries to Redirect (302) via Headers
+    if (resp.headers.location) {
+      googleUrl = resp.headers.location;
+      console.log("google url from headers", googleUrl);
+    }
+  } catch (err) {
+    console.error("Google sign-in error:", err);
+    const backendMessage = err.response?.data.error || err.message;
+    return {
+      success: false,
+      message: backendMessage || "google auth failed",
+    };
+  }
+  // Am doing it this way because i dont want to expose the backend url to the client at all
+  //  Perform the Redirect
+  if (googleUrl) {
+    redirect(googleUrl); // Next.js sends the user to Google automatically
   }
 }
