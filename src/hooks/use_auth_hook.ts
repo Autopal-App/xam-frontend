@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { LoginInput, RegisterInput, sendEmailInput } from "../lib/zod_schemas";
 import {
+  googleAction,
   loginAction,
   registerAction,
   sendEmailAction,
@@ -97,9 +98,6 @@ export function useLogin() {
         console.log("redirecturl", redirectUrl);
 
         if (redirectUrl) {
-          setError("Please verify your email first.");
-          console.log("works");
-
           console.log(result.data?.user);
           //Checking if user opject is present
           if (result.data?.user) {
@@ -107,7 +105,7 @@ export function useLogin() {
             queryClient.setQueryData(["current-user"], result.data?.user);
             console.log("caching user");
           }
-          router.push(/*result.data?.redirect_url */ "/verify-email");
+          router.push(result.data?.redirect_url || "/verify-email");
           console.log("redirecting");
 
           // router.refresh();
@@ -126,6 +124,31 @@ export function useLogin() {
       // ❌ Network failure (Server Action crashed completely)
       setError("Network connection error. Please try again.");
       console.error("Login Error:", err);
+    },
+  });
+}
+
+export function useGoogle() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => googleAction(),
+    onSuccess: (result) => {
+      if (result.success) {
+        // TODO: Handle success
+        console.log("Result", result);
+        if (result.data?.user) {
+          //Backend send use data so so we can pull the use email from there so wen user wants to resend verification code
+          queryClient.setQueryData(["current-user"], result.data?.user);
+          console.log("caching user");
+        }
+      } else {
+        // TODO: Handle error
+      }
+    },
+    onError: (err) => {
+      // TODO: Handle error
+      // setError("Network connection error. Please try again.");
+      console.error("Google Error:", err);
     },
   });
 }
