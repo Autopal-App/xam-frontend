@@ -4,7 +4,7 @@ import { Slot } from "@radix-ui/react-slot";
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
   variant?: "primary" | "google";
-  asChild?: boolean;  
+  asChild?: boolean;
 }
 
 export default function Button({
@@ -16,7 +16,8 @@ export default function Button({
 }: ButtonProps) {
   const Comp = asChild ? Slot : "button";
 
-  const base = "w-full py-3 rounded-xl font-medium transition flex items-center justify-center gap-3";
+  const base =
+    "w-full py-3 rounded-xl font-medium transition flex items-center justify-center gap-3";
   const variants = {
     primary: "bg-gray-900 text-white hover:bg-gray-800",
     google: "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50",
