@@ -142,7 +142,7 @@ export async function loginAction(data: LoginInput): Promise<ActionResponse> {
     const refreshTokenCookie = cookies.find((c) => c.name === "refresh_token");
     const refreshToken = refreshTokenCookie?.value;
 
-    const access_token = resp.data?.data?.accessToken;
+    const access_token = resp.data?.data?.accessToken || "";
     console.log(
       `access_token:${access_token} and refreshToken:${refreshToken}`
     );
@@ -155,9 +155,10 @@ export async function loginAction(data: LoginInput): Promise<ActionResponse> {
 
     //This is jus to know if user as set up an account or not
     // Todo: use account id instead of name make sure the backend sends account id
-    const name = resp.data.data?.user?.name;
-    const role = resp.data.data?.user?.role;
-    if (name === "" || role === "") {
+    console.log("message", resp.data?.message);
+    const serverMsg = resp.data?.message;
+
+    if (serverMsg === "Account not setup") {
       console.log("Account not set up");
       return { success: true, data: { redirect_url: "/onboarding/account" } };
     }
