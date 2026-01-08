@@ -22,22 +22,21 @@ export function useUser() {
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/src/lib/axios_client"; // 👈 Import our custom client
 
+/*
 export type User = {
   id: string;
   email: string;
   name?: string;
 };
-
+*/
 export function useUser() {
-  return useQuery<User>({
+  return useQuery({
     queryKey: ["current-user"],
     queryFn: async () => {
-      // 1. We call Next.js Proxy or Backend directly
-      // If you are using a proxy route:
+      // Using proxy route
       const { data } = await apiClient.get("/auth/me");
 
-      // If you are hitting backend directly (and rely on the cookie being injected by Middleware),
-      // that is a more advanced pattern. Stick to proxy for simplicity if possible.
+      console.log(data);
       return data;
     },
     // Don't retry immediately if 401, let the interceptor handle it

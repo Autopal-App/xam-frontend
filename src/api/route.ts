@@ -28,7 +28,7 @@ export async function POST() {
       {}, // Body is empty
       {
         headers: {
-          Cookie: `refresh_token=${session.refreshToken}`,
+          Cookie: `refresh_token=${session?.refreshToken}`,
         },
       },
     );
@@ -36,15 +36,13 @@ export async function POST() {
     const newTokens = response?.data?.access_token;
     console.log(newTokens);
 
-    // 4. Update the Session with NEW Access Token
-    // We keep the old user data, but update the tokens and expiration
-    const newExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day
+    const newExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7days
 
     const newSession = await encrypt({
       ...session, // Keep user info (id, email, etc)
       accessToken: newTokens.access_token,
-      // If backend rotates refresh tokens, update it. If not, keep old one.
-      refreshToken: newTokens.refresh_token || session.refreshToken,
+
+      refreshToken: session.refreshToken,
       expiresAt: newExpiresAt,
     });
 
