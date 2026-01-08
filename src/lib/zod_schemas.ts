@@ -1,5 +1,5 @@
 // This file contains all the zod schemas used in the application
-
+//Dont add 'use client' or use server it this file!!!
 // Thhis for the auth
 import { z } from "zod";
 
@@ -29,3 +29,10 @@ export const sendEmailSchema = z.object({
 });
 
 export type sendEmailInput = z.infer<typeof sendEmailSchema>;
+
+//Account creaton
+export const accountSetupSchema = z.object({
+  name: z.string().trim().min(1, "Name is required"),
+  type: z.enum(["individual", "organization", "school"]),
+});
+export type AccountSetupInput = z.infer<typeof accountSetupSchema>;

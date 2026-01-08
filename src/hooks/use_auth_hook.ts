@@ -1,11 +1,17 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { LoginInput, RegisterInput, sendEmailInput } from "../lib/zod_schemas";
+import {
+  AccountSetupInput,
+  LoginInput,
+  RegisterInput,
+  sendEmailInput,
+} from "../lib/zod_schemas";
 import {
   googleAction,
   loginAction,
   registerAction,
   sendEmailAction,
+  setupAccountAction,
   verifyEmailAction,
 } from "../server/api/auth";
 import { useAuthFormStore } from "../lib/stores/auth_store";
@@ -149,6 +155,27 @@ export function useGoogle() {
       // TODO: Handle error
       // setError("Network connection error. Please try again.");
       console.error("Google Error:", err);
+    },
+  });
+}
+
+export function useAccountSetup() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: AccountSetupInput) => setupAccountAction(data),
+    onSuccess: (result) => {
+      if (result.success) {
+        console.log("result", result);
+        router.push("/dashboard");
+      } else {
+        console.log("error");
+      }
+    },
+    onError: (err) => {
+      // TODO: Handle error
+      // setError("Network connection error. Please try again.");
+      console.error("Account setup error:", err);
     },
   });
 }

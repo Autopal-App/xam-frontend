@@ -9,12 +9,15 @@ import {
   sendEmailInput,
   LoginInput,
   LoginSchema,
+  AccountSetupInput,
+  accountSetupSchema,
 } from "@/src/lib/zod_schemas";
 import { parse } from "set-cookie-parser";
-import { createSession } from "../utils/session";
+import { createSession, decrypt } from "../utils/session";
 import { env } from "@/src/lib/config";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { Beaker } from "lucide-react";
+import { cookies } from "next/headers";
 
 type ActionResponse = {
   success: boolean;
@@ -24,7 +27,7 @@ type ActionResponse = {
   errors?: Record<string, string[]>;
 };
 export async function registerAction(
-  data: RegisterInput
+  data: RegisterInput,
 ): Promise<ActionResponse> {
   // 1. Input Validation (Zod) - Stop bad data early
   const validation = RegisterSchema.safeParse(data);
@@ -47,7 +50,7 @@ export async function registerAction(
     const refreshToken = refreshTokenCookie?.value;
     const access_token = response.data?.data?.accessToken;
     console.log(
-      `access_token:${access_token} and refreshToken:${refreshToken}`
+      `access_token:${access_token} and refreshToken:${refreshToken}`,
     );
 
     if (access_token && refreshToken) {
@@ -81,7 +84,7 @@ export async function registerAction(
 }
 
 export async function sendEmailAction(
-  data: sendEmailInput
+  data: sendEmailInput,
 ): Promise<ActionResponse> {
   const validation = sendEmailSchema.safeParse(data);
   if (!validation.success) {
@@ -101,11 +104,11 @@ export async function sendEmailAction(
 }
 
 export async function verifyEmailAction(
-  token: string
+  token: string,
 ): Promise<ActionResponse> {
   try {
     const resp = await axios.put(
-      `${env.BACKEND_API_URL}/auth/activate?token=${token}`
+      `${env.BACKEND_API_URL}/auth/activate?token=${token}`,
     );
     return { success: true, data: resp.data };
   } catch (err) {
@@ -144,7 +147,7 @@ export async function loginAction(data: LoginInput): Promise<ActionResponse> {
 
     const access_token = resp.data?.data?.accessToken || "";
     console.log(
-      `access_token:${access_token} and refreshToken:${refreshToken}`
+      `access_token:${access_token} and refreshToken:${refreshToken}`,
     );
     //NOt issusing the access token here because the account as not be setup and the access token need the accoutId in the payload
     //Also we dont want it redirecting to the dashboard wen ther is no accout data to load
@@ -227,4 +230,42 @@ export async function googleAction(): Promise<ActionResponse> {
   if (googleUrl) {
     redirect(googleUrl); // Next.js sends the user to Google automatically
   }
+}
+
+export async function setupAccountAction(
+  data: AccountSetupInput,
+): Promise<ActionResponse> {
+  const validate = accountSetupSchema.safeParse(data);
+  if (!validate.success) {
+    return { success: false, message: validate.error.message };
+  }
+  const cookieStore = cookies();
+  const sessionCookie = (await cookieStore).get("session")?.value;
+  if (!sessionCookie) {
+    return { success: false, message: "No session found" };
+  }
+
+  // 2. Decrypt it to get the tokens inside
+  const session = await decrypt(sessionCookie);
+
+  // 3. Check if we actually got a valid session back
+  if (!session?.refreshToken) {
+    return { success: false, message: "Unauthorized" };
+  }
+  try {
+    const resp = await axios.post(
+      `${env.BACKEND_API_URL}/users/accounts`,
+      data,
+      {
+        headers: {
+          Cookie: `refresh_token=${session.refreshToken}`,
+        },
+      },
+    );
+    console.log("resp:", resp.data);
+    return { success: true, data: resp.data };
+  } catch (err) {
+    console.error("error:", err);
+  }
+  return;
 }

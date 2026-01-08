@@ -1,4 +1,4 @@
-// src/hooks/queries/use-user.ts
+/*
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
@@ -10,11 +10,38 @@ export function useUser() {
     // This function runs if the cache is empty (e.g. user refreshed the page)
     queryFn: async () => {
       /* const { data } = await axios.get("/api/auth/me"); // Replace with your actual fetch logic if needed
-      return data;*/
+      return data;
       const data = null;
       return data;
     },
     // Optional: Don't re-fetch immediately if we just set the data manually
     staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}
+*/
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "@/src/lib/axios_client"; // 👈 Import our custom client
+
+export type User = {
+  id: string;
+  email: string;
+  name?: string;
+};
+
+export function useUser() {
+  return useQuery<User>({
+    queryKey: ["current-user"],
+    queryFn: async () => {
+      // 1. We call Next.js Proxy or Backend directly
+      // If you are using a proxy route:
+      const { data } = await apiClient.get("/auth/me");
+
+      // If you are hitting backend directly (and rely on the cookie being injected by Middleware),
+      // that is a more advanced pattern. Stick to proxy for simplicity if possible.
+      return data;
+    },
+    // Don't retry immediately if 401, let the interceptor handle it
+    retry: false,
+    staleTime: 1000 * 60 * 5, // 5 mins
   });
 }
